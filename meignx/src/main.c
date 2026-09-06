@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -34,6 +35,37 @@ static void begin_request(const int fd)
         perror("send");
         exit(errno);
     }
+}
+
+/**
+ * FastCGI transmits a name-value pair as the length of the name, followed by the length of the value,
+ * followed by the name, followed by the value. Lengths of 127 bytes and less can be encoded in one byte,
+ * while longer lengths are always encoded in four bytes
+ *
+ * @see https://fastcgi-archives.github.io/FastCGI_Specification.html#34-name-value-pairs
+ */
+static void add_param(const char *name, const char *value, uint8_t *buf, int *length, const int capacity)
+{
+    uint8_t *end_of_buf = buf + *length;
+
+    const size_t name_len = strlen(name);
+    const size_t value_len = strlen(value);
+
+    *end_of_buf = name_len;
+    end_of_buf++;
+    (*length)++;
+
+    *end_of_buf = value_len;
+    end_of_buf++;
+    (*length)++;
+
+    memcpy(end_of_buf, name, name_len);
+    end_of_buf += name_len;
+    *length += (int) name_len;
+
+    memcpy(end_of_buf, value, value_len);
+    end_of_buf += value_len;
+    *length += (int) value_len;
 }
 
 static void send_get_method(const int fd)
@@ -70,6 +102,12 @@ static void send_get_method(const int fd)
             .valueData = "GET",
         },
     };
+
+    uint8_t body[4096] = {0};
+    int length = 0;
+
+    add_param("REQUEST_METHOD", "GET", body, &length, 4096);
+    add_param("SERVER_NAME", "localhost", body, &length, 4096);
 
     const ssize_t success = send(fd, &record, sizeof(record), 0);
 
