@@ -7,11 +7,37 @@ services:
       - "8000:8000"
     volumes:
       - ./meignx/src:/app/src
+      - ./meignx/include:/app/include
+      - ./meignx/CMakeLists.txt:/app/CMakeLists.txt
     tty: true
     develop:
       watch:
-        - action: rebuild
+        - action: sync+exec
+          path: meignx/CMakeLists.txt
+          target: /app/CMakeLists.txt
+          exec:
+            working_dir: /app
+            command: >
+              sh -c "cmake -S . -B cmake-build-debug &&
+                     cmake --build cmake-build-debug"
+
+        - action: sync+exec
           path: ./src
+          target: /app/src
+          include:
+            - "**/*.c"
+          exec:
+            working_dir: /app
+            command: cmake --build cmake-build-debug
+
+        - action: sync+exec
+          path: ./include
+          target: /app/include
+          include:
+            - "**/*.h"
+          exec:
+            working_dir: /app
+            command: cmake --build cmake-build-debug
 
   php:
     image: php:8.5-fpm-alpine

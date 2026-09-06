@@ -1,15 +1,13 @@
-FROM alpine AS builder
+FROM alpine
 
-RUN apk add build-base
+RUN apk add build-base cmake
 
 WORKDIR /app
 
 COPY . .
 
-RUN mkdir -p build \
-  && gcc -o build/meignx src/main.c
+RUN cmake -S . -B cmake-build-debug \
+    && cmake --build cmake-build-debug
 
-RUN ls -asl build
-
-ENTRYPOINT ["build/meignx"]
+ENTRYPOINT ["cmake-build-debug/meignx"]
 

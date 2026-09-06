@@ -2,6 +2,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+void begin_request()
+{
+}
+
 int main()
 {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
