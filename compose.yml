@@ -1,0 +1,19 @@
+services:
+  meignx:
+    build:
+      context: meignx
+      dockerfile: .docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./meignx/src:/app/src
+    tty: true
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+
+  php:
+    image: php:8.5-fpm-alpine
+    tty: true
+
