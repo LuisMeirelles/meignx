@@ -44,36 +44,77 @@ static void begin_request(const int fd)
  *
  * @see https://fastcgi-archives.github.io/FastCGI_Specification.html#34-name-value-pairs
  */
-static void add_param(const char *name, const char *value, uint8_t *buf, int *length, const int capacity)
+static void add_param(const char* name, const char* value, uint8_t* buf, int* length, const int capacity)
 {
-    uint8_t *end_of_buf = buf + *length;
+    uint8_t* end_of_buf = buf + *length;
 
-    const uint8_t name_len = (uint8_t) strlen(name);
-    const uint8_t value_len = (uint8_t) strlen(value);
+    const size_t name_len = strlen(name);
 
-    const int params_size = *length + name_len + value_len + 2;
-
-    if (params_size > capacity)
+    if (name_len > 0x7FFFFFFF)
     {
-        dprintf(STDERR_FILENO, "The size of the parameters exceeds the capacity of %d.", capacity);
+        dprintf(STDERR_FILENO, "The size of the name exceeds the maximum size");
         exit(1);
     }
 
-    *end_of_buf = name_len;
-    end_of_buf++;
-    (*length)++;
+    const size_t value_len = strlen(value);
 
-    *end_of_buf = value_len;
-    end_of_buf++;
-    (*length)++;
+    if (value_len > 0x7FFFFFFF)
+    {
+        dprintf(STDERR_FILENO, "The size of the value exceeds the maximum size");
+        exit(1);
+    }
+
+    const size_t name_len_size = name_len < 128 ? 1 : 4;
+    const size_t value_len_size = value_len < 128 ? 1 : 4;
+
+    const size_t param_size = name_len
+        + value_len
+        + name_len_size
+        + value_len_size;
+
+    const unsigned long required_size = *length + param_size;
+
+    if (required_size > capacity)
+    {
+        dprintf(STDERR_FILENO, "The size of the parameters exceeds the capacity of %d.", capacity);
+        exit(2);
+    }
+
+    if (name_len < 128)
+    {
+        *end_of_buf++ = name_len;
+    }
+    else
+    {
+        *end_of_buf++ = ((name_len >> 24) & 0x7F) | 0x80;
+        *end_of_buf++ = (name_len >> 16) & 0xFF;
+        *end_of_buf++ = (name_len >> 8) & 0xFF;
+        *end_of_buf++ = name_len & 0xFF;
+    }
+
+    *length += (int)name_len_size;
+
+    if (value_len < 128)
+    {
+        *end_of_buf++ = value_len;
+    }
+    else
+    {
+        *end_of_buf++ = ((value_len >> 24) & 0x7F) | 0x80;
+        *end_of_buf++ = (value_len >> 16) & 0xFF;
+        *end_of_buf++ = (value_len >> 8) & 0xFF;
+        *end_of_buf++ = value_len & 0xFF;
+    }
+
+    *length += (int)value_len_size;
 
     memcpy(end_of_buf, name, name_len);
     end_of_buf += name_len;
-    *length += (int) name_len;
+    *length += (int)name_len;
 
     memcpy(end_of_buf, value, value_len);
     end_of_buf += value_len;
-    *length += (int) value_len;
+    *length += (int)value_len;
 }
 
 static void send_get_method(const int fd)
@@ -111,11 +152,10 @@ static void send_get_method(const int fd)
         },
     };
 
-    uint8_t body[20] = {0};
+    uint8_t body[4096] = {0};
     int length = 0;
 
-    add_param("REQUEST_METHOD", "GET", body, &length, 20);
-    add_param("SERVER_NAME", "localhost", body, &length, 20);
+    add_param("REQUEST_METHOD", "GET", body, &length, 4096);
 
     const ssize_t success = send(fd, &record, sizeof(record), 0);
 
