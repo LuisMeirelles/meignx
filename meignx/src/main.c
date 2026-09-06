@@ -48,8 +48,16 @@ static void add_param(const char *name, const char *value, uint8_t *buf, int *le
 {
     uint8_t *end_of_buf = buf + *length;
 
-    const size_t name_len = strlen(name);
-    const size_t value_len = strlen(value);
+    const uint8_t name_len = (uint8_t) strlen(name);
+    const uint8_t value_len = (uint8_t) strlen(value);
+
+    const int params_size = *length + name_len + value_len + 2;
+
+    if (params_size > capacity)
+    {
+        dprintf(STDERR_FILENO, "The size of the parameters exceeds the capacity of %d.", capacity);
+        exit(1);
+    }
 
     *end_of_buf = name_len;
     end_of_buf++;
@@ -103,11 +111,11 @@ static void send_get_method(const int fd)
         },
     };
 
-    uint8_t body[4096] = {0};
+    uint8_t body[20] = {0};
     int length = 0;
 
-    add_param("REQUEST_METHOD", "GET", body, &length, 4096);
-    add_param("SERVER_NAME", "localhost", body, &length, 4096);
+    add_param("REQUEST_METHOD", "GET", body, &length, 20);
+    add_param("SERVER_NAME", "localhost", body, &length, 20);
 
     const ssize_t success = send(fd, &record, sizeof(record), 0);
 
