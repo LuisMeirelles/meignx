@@ -4,7 +4,9 @@ RUN apk add build-base cmake
 
 WORKDIR /app
 
-COPY . .
+COPY ./src/ ./src/
+COPY ./include/ ./include/
+COPY ./CMakeLists.txt ./CMakeLists.txt
 
 RUN cmake -S . -B cmake-build-debug \
     && cmake --build cmake-build-debug
