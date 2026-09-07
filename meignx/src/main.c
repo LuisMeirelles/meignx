@@ -86,6 +86,31 @@ static void handle_send_params_result(const SendParamsResult send_params_result)
     }
 }
 
+static void handle_request(const int fd)
+{
+    begin_request(fd);
+
+    const SendParamsResult send_params_result = send_params(fd);
+
+    handle_send_params_result(send_params_result);
+
+    send_stdin(fd);
+}
+
+static void handle_response(const int fd)
+{
+    char buf[4096] = {0};
+
+    const ssize_t recvd = recv(fd, buf, sizeof(buf), 0);
+
+    if (recvd == -1)
+    {
+        perror("recv");
+    }
+
+    printf("recv returned: %zd\n", recvd);
+}
+
 int main()
 {
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -106,24 +131,9 @@ int main()
         return errno;
     }
 
-    begin_request(fd);
+    handle_request(fd);
 
-    const SendParamsResult send_params_result = send_params(fd);
-
-    handle_send_params_result(send_params_result);
-
-    send_stdin(fd);
-
-    char buf[4096] = {0};
-
-    const ssize_t recvd = recv(fd, buf, sizeof(buf), 0);
-
-    if (recvd == -1)
-    {
-        perror("recv");
-    }
-
-    printf("recv returned: %zd\n", recvd);
+    handle_response(fd);
 
     close(fd);
 
