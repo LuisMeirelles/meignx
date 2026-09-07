@@ -1,5 +1,4 @@
 #include <errno.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/socket.h>
