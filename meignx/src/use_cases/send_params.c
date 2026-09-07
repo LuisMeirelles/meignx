@@ -7,9 +7,6 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 
 #include "add_param.h"
@@ -73,26 +70,18 @@ SendParamsResult send_params(const int fd)
     };
 
     const size_t header_size = sizeof(header);
-    const size_t record_size = header_size + body_length;
-
-    // TODO: use send directly without malloc and memcpy
-    uint8_t* record = malloc(record_size);
-
-    if (record == NULL)
-    {
-        perror("malloc");
-        exit(errno);
-    }
-
-    memcpy(record, &header, header_size);
-    memcpy(record + header_size, body, body_length);
 
     // TODO: send_all
-    const ssize_t sent = send(fd, record, record_size, 0);
+    const ssize_t header_sent = send(fd, &header, header_size, 0);
 
-    free(record);
+    if (header_sent == -1)
+    {
+        make_network_error(errno);
+    }
 
-    if (sent == -1)
+    const ssize_t body_sent = send(fd, &body, body_length, 0);
+
+    if (body_sent == -1)
     {
         make_network_error(errno);
     }
