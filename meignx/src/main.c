@@ -114,9 +114,9 @@ int main()
 
     send_stdin(fd);
 
-    char buf[1024] = {0};
+    char buf[4096] = {0};
 
-    const ssize_t recvd = recv(fd, buf, 1024, 0);
+    const ssize_t recvd = recv(fd, buf, sizeof(buf), 0);
 
     if (recvd == -1)
     {
