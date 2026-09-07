@@ -24,7 +24,7 @@ typedef struct
     char* value;
 } Param;
 
-static SendParamsResult make_validation_error(const AddParamResult error)
+static SendParamsResult make_protocol_error(const AddParamResult error)
 {
     return (SendParamsResult){
         .tag = SEND_PARAMS_PROTOCOL_ERR,
@@ -68,7 +68,7 @@ static SendParamsResult send_fcgi_params_request(const int fd, const Param param
 
         if (add_param_result.tag != ADD_PARAM_OK)
         {
-            return make_validation_error(add_param_result);
+            return make_protocol_error(add_param_result);
         }
     }
 
