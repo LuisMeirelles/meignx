@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +45,7 @@ static void begin_request(const int fd)
  *
  * @see https://fastcgi-archives.github.io/FastCGI_Specification.html#34-name-value-pairs
  */
-static void add_param(const char* name, const char* value, uint8_t* buf, int* length, const int capacity)
+static void add_param(const char* name, const char* value, uint8_t* buf, size_t* length, const int capacity)
 {
     uint8_t* end_of_buf = buf + *length;
 
@@ -52,7 +53,7 @@ static void add_param(const char* name, const char* value, uint8_t* buf, int* le
 
     if (name_len > 0x7FFFFFFF)
     {
-        dprintf(STDERR_FILENO, "The size of the name exceeds the maximum size");
+        fprintf(stderr, "The size of the name exceeds the maximum size");
         exit(1);
     }
 
@@ -60,8 +61,8 @@ static void add_param(const char* name, const char* value, uint8_t* buf, int* le
 
     if (value_len > 0x7FFFFFFF)
     {
-        dprintf(STDERR_FILENO, "The size of the value exceeds the maximum size");
-        exit(1);
+        fprintf(stderr, "The size of the value exceeds the maximum size");
+        exit(2);
     }
 
     const size_t name_len_size = name_len < 128 ? 1 : 4;
@@ -76,8 +77,8 @@ static void add_param(const char* name, const char* value, uint8_t* buf, int* le
 
     if (required_size > capacity)
     {
-        dprintf(STDERR_FILENO, "The size of the parameters exceeds the capacity of %d.", capacity);
-        exit(2);
+        fprintf(stderr, "The size of the parameters exceeds the capacity of %d.", capacity);
+        exit(3);
     }
 
     if (name_len < 128)
@@ -119,47 +120,47 @@ static void add_param(const char* name, const char* value, uint8_t* buf, int* le
 
 static void send_get_method(const int fd)
 {
-    typedef struct
-    {
-        unsigned char nameLengthB0;
-        unsigned char valueLengthB0;
-        unsigned char nameData[14];
-        unsigned char valueData[3];
-    } FCGI_NameValuePair;
+    uint8_t body[4096] = {0};
+    size_t body_length = 0;
 
-    typedef struct
-    {
-        FCGI_Header header;
-        FCGI_NameValuePair body;
-    } FCGI_ParamsRecord;
+    add_param("REQUEST_METHOD", "GET", body, &body_length, sizeof(body));
 
-    const FCGI_ParamsRecord record = {
-        .header = {
-            .version = 1,
-            .type = FCGI_PARAMS,
-            .requestIdB1 = 0,
-            .requestIdB0 = 1,
-            .contentLengthB1 = 0,
-            .contentLengthB0 = 19,
-            .paddingLength = 0,
-            .reserved = 0,
-        },
-        .body = {
-            .nameLengthB0 = 14,
-            .valueLengthB0 = 3,
-            .nameData = "REQUEST_METHOD",
-            .valueData = "GET",
-        },
+    if (body_length > UINT16_MAX)
+    {
+        fprintf(stderr, "FCGI_PARAMS body too large\n");
+        exit(4);
+    }
+
+    const FCGI_Header header = {
+        .version = 1,
+        .type = FCGI_PARAMS,
+        .requestIdB1 = 0,
+        .requestIdB0 = 1,
+        .contentLengthB1 = (uint8_t)((body_length >> 8) & 0xFF),
+        .contentLengthB0 = (uint8_t)(body_length & 0xFF),
+        .paddingLength = 0,
+        .reserved = 0,
     };
 
-    uint8_t body[4096] = {0};
-    int length = 0;
+    const size_t header_size = sizeof(header);
+    const size_t record_size = header_size + body_length;
 
-    add_param("REQUEST_METHOD", "GET", body, &length, 4096);
+    uint8_t* record = malloc(record_size);
 
-    const ssize_t success = send(fd, &record, sizeof(record), 0);
+    if (record == NULL)
+    {
+        perror("malloc");
+        exit(errno);
+    }
 
-    if (success == -1)
+    memcpy(record, &header, header_size);
+    memcpy(record + header_size, body, body_length);
+
+    const ssize_t sent = send(fd, record, record_size, 0);
+
+    free(record);
+
+    if (sent == -1)
     {
         perror("send");
         exit(errno);
