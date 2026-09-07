@@ -9,30 +9,8 @@
 #include "send_params.h"
 #include "send_stdin.h"
 
-int main()
+static void handle_send_params_result(const SendParamsResult send_params_result)
 {
-    const int fd = socket(AF_INET, SOCK_STREAM, 0);
-
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(9000),
-        .sin_addr = {
-            .s_addr = 0x220A8C0,
-        },
-    };
-
-    const int error_connect = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
-
-    if (error_connect != 0)
-    {
-        perror("connect");
-        return errno;
-    }
-
-    begin_request(fd);
-
-    const SendParamsResult send_params_result = send_params(fd);
-
     switch (send_params_result.tag)
     {
     case SEND_PARAMS_PROTOCOL_ERR:
@@ -106,6 +84,33 @@ int main()
     case SEND_PARAMS_OK:
         break;
     }
+}
+
+int main()
+{
+    const int fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(9000),
+        .sin_addr = {
+            .s_addr = 0x220A8C0,
+        },
+    };
+
+    const int error_connect = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
+
+    if (error_connect != 0)
+    {
+        perror("connect");
+        return errno;
+    }
+
+    begin_request(fd);
+
+    const SendParamsResult send_params_result = send_params(fd);
+
+    handle_send_params_result(send_params_result);
 
     send_stdin(fd);
 
@@ -113,12 +118,12 @@ int main()
 
     const ssize_t recvd = recv(fd, buf, 1024, 0);
 
-    if (recvd == -1) {
+    if (recvd == -1)
+    {
         perror("recv");
     }
 
     printf("recv returned: %zd\n", recvd);
-
 
     close(fd);
 
