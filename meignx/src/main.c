@@ -156,6 +156,7 @@ static void send_get_method(const int fd)
     memcpy(record, &header, header_size);
     memcpy(record + header_size, body, body_length);
 
+    // TODO: send_all
     const ssize_t sent = send(fd, record, record_size, 0);
 
     free(record);
@@ -164,6 +165,12 @@ static void send_get_method(const int fd)
     {
         perror("send");
         exit(errno);
+    }
+
+    if ((size_t)sent != record_size)
+    {
+        fprintf(stderr, "partial send: %zd/%zu\n",
+                sent, record_size);
     }
 }
 
