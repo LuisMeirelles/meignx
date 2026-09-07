@@ -11,6 +11,7 @@
 
 #include "add_param.h"
 #include "fcgi.h"
+#include "lib/send_all.h"
 
 #define BODY_BUF_SIZE 19
 
@@ -69,17 +70,16 @@ SendParamsResult send_params(const int fd)
         .reserved = 0,
     };
 
-    const size_t header_size = sizeof(header);
+    constexpr size_t header_size = sizeof(header);
 
-    // TODO: send_all
-    const ssize_t header_sent = send(fd, &header, header_size, 0);
+    const ssize_t header_sent = send_all(fd, &header, header_size, 0);
 
     if (header_sent == -1)
     {
         make_network_error(errno);
     }
 
-    const ssize_t body_sent = send(fd, &body, body_length, 0);
+    const ssize_t body_sent = send_all(fd, &body, body_length, 0);
 
     if (body_sent == -1)
     {
