@@ -15,17 +15,50 @@
 #include "add_param.h"
 #include "fcgi.h"
 
-void send_params(const int fd)
+#define BODY_BUF_SIZE 19
+
+static SendParamsResult make_validation_error(const AddParamResult error)
 {
-    uint8_t body[4096] = {0};
+    return (SendParamsResult){
+        .tag = SEND_PARAMS_PROTOCOL_ERR,
+        .payload.protocol_error.previous = error,
+    };
+}
+
+static SendParamsResult make_body_too_large_error(const unsigned short calculated_size)
+{
+    return (SendParamsResult){
+        .tag = SEND_PARAMS_BODY_TOO_LARGE,
+        .payload.body_error = {
+            .calculated_size = calculated_size,
+            .max_size = MAX_BODY_SIZE,
+        }
+    };
+}
+
+static SendParamsResult make_network_error(const int sys_errno)
+{
+    return (SendParamsResult){
+        .tag = SEND_PARAMS_NETWORK_ERR,
+        .payload.network_error.sys_errno = sys_errno,
+    };
+}
+
+SendParamsResult send_params(const int fd)
+{
+    uint8_t body[BODY_BUF_SIZE] = {0};
     size_t body_length = 0;
 
-    add_param("REQUEST_METHOD", "GET", body, &body_length, sizeof(body));
+    const AddParamResult add_param_result = add_param("REQUEST_METHOD", "GET", body, &body_length, sizeof(body));
 
-    if (body_length > UINT16_MAX)
+    if (add_param_result.tag != ADD_PARAM_OK)
     {
-        fprintf(stderr, "FCGI_PARAMS body too large\n");
-        exit(4);
+        return make_validation_error(add_param_result);
+    }
+
+    if (body_length > MAX_BODY_SIZE)
+    {
+        return make_body_too_large_error(body_length);
     }
 
     const FCGI_Header header = {
@@ -42,6 +75,7 @@ void send_params(const int fd)
     const size_t header_size = sizeof(header);
     const size_t record_size = header_size + body_length;
 
+    // TODO: use send directly without malloc and memcpy
     uint8_t* record = malloc(record_size);
 
     if (record == NULL)
@@ -60,13 +94,8 @@ void send_params(const int fd)
 
     if (sent == -1)
     {
-        perror("send");
-        exit(errno);
+        make_network_error(errno);
     }
 
-    if ((size_t)sent != record_size)
-    {
-        fprintf(stderr, "partial send: %zd/%zu\n",
-                sent, record_size);
-    }
+    return (SendParamsResult){.tag = SEND_PARAMS_OK};
 }

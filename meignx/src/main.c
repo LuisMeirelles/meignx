@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -29,9 +30,81 @@ int main()
 
     begin_request(fd);
 
-    send_params(fd);
+    const SendParamsResult send_params_result = send_params(fd);
 
-    printf("funcionou");
+    switch (send_params_result.tag)
+    {
+    case SEND_PARAMS_PROTOCOL_ERR:
+        {
+            const AddParamResult add_param_error = send_params_result.payload.protocol_error.previous;
+
+            switch (add_param_error.tag)
+            {
+            case ADD_PARAM_LENGTH_TOO_LARGE:
+                {
+                    const FCGI_ParamComponent component = add_param_error.payload.length_error.component;
+
+                    const char* component_name = component == FCGI_COMPONENT_NAME
+                                                     ? "NAME"
+                                                     : "VALUE";
+
+                    fprintf(
+                        stderr,
+                        "[PROTOCOL ERROR] Failed to add FastCGI parameter.\n"
+                        "  -> Reason: The %s length exceeds the maximum allowed limit of %zu bytes.\n",
+                        component_name,
+                        add_param_error.payload.length_error.max_size
+                    );
+                    break;
+                }
+            case ADD_PARAM_BUFFER_TOO_SMALL:
+                fprintf(
+                    stderr,
+                    "[PROTOCOL ERROR] Insufficient internal buffer capacity while serializing parameters.\n"
+                    "  -> Required: %zu bytes | Buffer capacity: %zu bytes.\n",
+                    add_param_error.payload.buffer_error.min_buf_size,
+                    add_param_error.payload.buffer_error.given_capacity
+                );
+                break;
+            case ADD_PARAM_OK:
+                break;
+            }
+
+            break;
+        }
+    case SEND_PARAMS_NETWORK_ERR:
+        {
+            const int sys_errno = send_params_result.payload.network_error.sys_errno;
+
+            fprintf(
+                stderr,
+                "[NETWORK ERROR] Failed to send parameters through the socket.\n"
+                "  -> Error Code: %d\n"
+                "  -> Description: %s\n",
+                sys_errno,
+                strerror(sys_errno)
+            );
+
+            break;
+        }
+    case SEND_PARAMS_BODY_TOO_LARGE:
+        {
+            const size_t calculated_size = send_params_result.payload.body_error.calculated_size;
+            const size_t max_size = send_params_result.payload.body_error.max_size;
+
+            fprintf(
+                stderr,
+                "[LIMIT ERROR] The FCGI_PARAMS record body size is too large.\n"
+                "  -> Calculated size: %zu bytes | Protocol maximum limit: %zu bytes.\n",
+                calculated_size,
+                max_size
+            );
+
+            break;
+        }
+    case SEND_PARAMS_OK:
+        break;
+    }
 
     close(fd);
 

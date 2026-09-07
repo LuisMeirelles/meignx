@@ -6,9 +6,29 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+
+static AddParamResult make_length_too_large_error(const FCGI_ParamComponent component)
+{
+    return (AddParamResult){
+        .tag = ADD_PARAM_LENGTH_TOO_LARGE,
+        .payload.length_error = {
+            .max_size = FCGI_PARAM_MAX_SIZE,
+            .component = component,
+        }
+    };
+}
+
+static AddParamResult make_buffer_too_small_error(const size_t min_buf_size, const size_t given_capacity)
+{
+    return (AddParamResult){
+        .tag = ADD_PARAM_BUFFER_TOO_SMALL,
+        .payload.buffer_error = {
+            .min_buf_size = min_buf_size,
+            .given_capacity = given_capacity,
+        }
+    };
+}
 
 /**
  * FastCGI transmits a name-value pair as the length of the name, followed by the length of the value,
@@ -17,24 +37,22 @@
  *
  * @see https://fastcgi-archives.github.io/FastCGI_Specification.html#34-name-value-pairs
  */
-void add_param(const char* name, const char* value, uint8_t* buf, size_t* length, const int capacity)
+AddParamResult add_param(const char* name, const char* value, uint8_t* buf, size_t* length, const size_t capacity)
 {
     uint8_t* end_of_buf = buf + *length;
 
     const size_t name_len = strlen(name);
 
-    if (name_len > 0x7FFFFFFF)
+    if (name_len > FCGI_PARAM_MAX_SIZE)
     {
-        fprintf(stderr, "The size of the name exceeds the maximum size");
-        exit(1);
+        return make_length_too_large_error(FCGI_COMPONENT_NAME);
     }
 
     const size_t value_len = strlen(value);
 
-    if (value_len > 0x7FFFFFFF)
+    if (value_len > FCGI_PARAM_MAX_SIZE)
     {
-        fprintf(stderr, "The size of the value exceeds the maximum size");
-        exit(2);
+        return make_length_too_large_error(FCGI_COMPONENT_VALUE);
     }
 
     const size_t name_len_size = name_len < 128 ? 1 : 4;
@@ -45,12 +63,11 @@ void add_param(const char* name, const char* value, uint8_t* buf, size_t* length
         + name_len_size
         + value_len_size;
 
-    const unsigned long required_size = *length + param_size;
+    const size_t required_size = *length + param_size;
 
     if (required_size > capacity)
     {
-        fprintf(stderr, "The size of the parameters exceeds the capacity of %d.", capacity);
-        exit(3);
+        return make_buffer_too_small_error(required_size, capacity);
     }
 
     if (name_len < 128)
@@ -65,8 +82,6 @@ void add_param(const char* name, const char* value, uint8_t* buf, size_t* length
         *end_of_buf++ = name_len & 0xFF;
     }
 
-    *length += (int)name_len_size;
-
     if (value_len < 128)
     {
         *end_of_buf++ = value_len;
@@ -79,13 +94,13 @@ void add_param(const char* name, const char* value, uint8_t* buf, size_t* length
         *end_of_buf++ = value_len & 0xFF;
     }
 
-    *length += (int)value_len_size;
-
     memcpy(end_of_buf, name, name_len);
     end_of_buf += name_len;
-    *length += (int)name_len;
 
     memcpy(end_of_buf, value, value_len);
     end_of_buf += value_len;
-    *length += (int)value_len;
+
+    *length = required_size;
+
+    return (AddParamResult){.tag = ADD_PARAM_OK};
 }
