@@ -98,7 +98,7 @@ SendParamsResult send_params(const int fd)
 {
     const Param params[] = {
         {.key = "REQUEST_METHOD", .value = "GET"},
-        {.key = "SCRIPT_FILENAME", .value = "/caminho/absoluto/index.php"},
+        {.key = "SCRIPT_FILENAME", .value = "/var/www/html/index.php"},
         {.key = "SCRIPT_NAME", .value = "/index.php"},
         {.key = "REQUEST_URI", .value = "/index.php"},
         {.key = "QUERY_STRING", .value = ""},

@@ -7,6 +7,7 @@
 
 #include "begin_request.h"
 #include "send_params.h"
+#include "send_stdin.h"
 
 int main()
 {
@@ -105,6 +106,19 @@ int main()
     case SEND_PARAMS_OK:
         break;
     }
+
+    send_stdin(fd);
+
+    char buf[1024] = {0};
+
+    const ssize_t recvd = recv(fd, buf, 1024, 0);
+
+    if (recvd == -1) {
+        perror("recv");
+    }
+
+    printf("recv returned: %zd\n", recvd);
+
 
     close(fd);
 
