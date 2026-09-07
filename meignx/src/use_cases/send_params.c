@@ -15,6 +15,15 @@
 
 #define BODY_BUF_SIZE 148
 
+// TODO: extract a map lib
+// TODO: extract `send_header` or `build_header` function
+
+typedef struct
+{
+    char* key;
+    char* value;
+} Param;
+
 static SendParamsResult make_validation_error(const AddParamResult error)
 {
     return (SendParamsResult){
@@ -42,29 +51,12 @@ static SendParamsResult make_network_error(const int sys_errno)
     };
 }
 
-SendParamsResult send_params(const int fd)
+static SendParamsResult send_fcgi_params_request(const int fd, const Param params[], const size_t params_len)
 {
     uint8_t body[BODY_BUF_SIZE] = {0};
     size_t body_length = 0;
 
-    typedef struct
-    {
-        char* key;
-        char* value;
-    } Param;
-
-    const Param params[] = {
-        {.key = "REQUEST_METHOD", .value = "GET"},
-        {.key = "SCRIPT_FILENAME", .value = "/caminho/absoluto/index.php"},
-        {.key = "SCRIPT_NAME", .value = "/index.php"},
-        {.key = "REQUEST_URI", .value = "/index.php"},
-        {.key = "QUERY_STRING", .value = ""},
-        {.key = "SERVER_PROTOCOL", .value = "HTTP/1.1"},
-    };
-
-    constexpr size_t count = sizeof(params) / sizeof(Param);
-
-    for (int i = 0; i < count; ++i)
+    for (int i = 0; i < params_len; ++i)
     {
         const AddParamResult add_param_result = add_param(
             params[i].key,
@@ -113,4 +105,27 @@ SendParamsResult send_params(const int fd)
     }
 
     return (SendParamsResult){.tag = SEND_PARAMS_OK};
+}
+
+SendParamsResult send_params(const int fd)
+{
+    const Param params[] = {
+        {.key = "REQUEST_METHOD", .value = "GET"},
+        {.key = "SCRIPT_FILENAME", .value = "/caminho/absoluto/index.php"},
+        {.key = "SCRIPT_NAME", .value = "/index.php"},
+        {.key = "REQUEST_URI", .value = "/index.php"},
+        {.key = "QUERY_STRING", .value = ""},
+        {.key = "SERVER_PROTOCOL", .value = "HTTP/1.1"},
+    };
+
+    constexpr size_t count = sizeof(params) / sizeof(Param);
+
+    const SendParamsResult send_params_result = send_fcgi_params_request(fd, params, count);
+
+    if (send_params_result.tag != SEND_PARAMS_OK)
+    {
+        return send_params_result;
+    }
+
+    return send_fcgi_params_request(fd, nullptr, 0);
 }
