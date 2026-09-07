@@ -1,3 +1,5 @@
+#pragma once
+
 /***************************************************************************************
  * https://fastcgi-archives.github.io/FastCGI_Specification.html#8-types-and-constants *
  ***************************************************************************************/
@@ -19,6 +21,11 @@ typedef struct {
     unsigned char paddingLength;
     unsigned char reserved;
 } FCGI_Header;
+
+_Static_assert(
+    sizeof(FCGI_Header) == 8,
+    "FCGI_Header must be exactly 8 bytes"
+);
 
 /*
  * Number of bytes in a FCGI_Header.  Future versions of the protocol
