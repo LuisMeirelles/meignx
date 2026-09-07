@@ -16,8 +16,6 @@
 
 #define BODY_BUF_SIZE 148
 
-// TODO: extract a map lib
-
 typedef struct
 {
     char* key;
