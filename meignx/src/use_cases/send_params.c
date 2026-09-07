@@ -11,12 +11,12 @@
 
 #include "add_param.h"
 #include "fcgi.h"
+#include "send_header.h"
 #include "lib/send_all.h"
 
 #define BODY_BUF_SIZE 148
 
 // TODO: extract a map lib
-// TODO: extract `send_header` or `build_header` function
 
 typedef struct
 {
@@ -77,24 +77,11 @@ static SendParamsResult send_fcgi_params_request(const int fd, const Param param
         return make_body_too_large_error(body_length);
     }
 
-    const FCGI_Header header = {
-        .version = 1,
-        .type = FCGI_PARAMS,
-        .requestIdB1 = 0,
-        .requestIdB0 = 1,
-        .contentLengthB1 = (uint8_t)((body_length >> 8) & 0xFF),
-        .contentLengthB0 = (uint8_t)(body_length & 0xFF),
-        .paddingLength = 0,
-        .reserved = 0,
-    };
-
-    constexpr size_t header_size = sizeof(header);
-
-    const ssize_t header_sent = send_all(fd, &header, header_size, 0);
+    const ssize_t header_sent = send_header(fd, FCGI_PARAMS, body_length);
 
     if (header_sent == -1)
     {
-        make_network_error(errno);
+        return make_network_error(errno);
     }
 
     const ssize_t body_sent = send_all(fd, &body, body_length, 0);

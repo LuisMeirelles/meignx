@@ -12,6 +12,7 @@ add_executable(meignx
         src/fcgi/add_param.c
         src/use_cases/send_params.c
         src/lib/send_all.c
+        src/fcgi/send_header.c
 )
 
 target_include_directories(meignx PRIVATE
