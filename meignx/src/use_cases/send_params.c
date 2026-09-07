@@ -13,7 +13,7 @@
 #include "fcgi.h"
 #include "lib/send_all.h"
 
-#define BODY_BUF_SIZE 19
+#define BODY_BUF_SIZE 148
 
 static SendParamsResult make_validation_error(const AddParamResult error)
 {
@@ -47,11 +47,37 @@ SendParamsResult send_params(const int fd)
     uint8_t body[BODY_BUF_SIZE] = {0};
     size_t body_length = 0;
 
-    const AddParamResult add_param_result = add_param("REQUEST_METHOD", "GET", body, &body_length, sizeof(body));
-
-    if (add_param_result.tag != ADD_PARAM_OK)
+    typedef struct
     {
-        return make_validation_error(add_param_result);
+        char* key;
+        char* value;
+    } Param;
+
+    const Param params[] = {
+        {.key = "REQUEST_METHOD", .value = "GET"},
+        {.key = "SCRIPT_FILENAME", .value = "/caminho/absoluto/index.php"},
+        {.key = "SCRIPT_NAME", .value = "/index.php"},
+        {.key = "REQUEST_URI", .value = "/index.php"},
+        {.key = "QUERY_STRING", .value = ""},
+        {.key = "SERVER_PROTOCOL", .value = "HTTP/1.1"},
+    };
+
+    constexpr size_t count = sizeof(params) / sizeof(Param);
+
+    for (int i = 0; i < count; ++i)
+    {
+        const AddParamResult add_param_result = add_param(
+            params[i].key,
+            params[i].value,
+            body,
+            &body_length,
+            sizeof(body)
+        );
+
+        if (add_param_result.tag != ADD_PARAM_OK)
+        {
+            return make_validation_error(add_param_result);
+        }
     }
 
     if (body_length > MAX_BODY_SIZE)
