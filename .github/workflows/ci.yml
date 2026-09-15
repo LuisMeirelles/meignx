@@ -130,7 +130,5 @@ jobs:
           file: ./meignx/.docker/Dockerfile
           target: production
           push: true
-          build-args: |
-            CMAKE_PRESET=release
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
