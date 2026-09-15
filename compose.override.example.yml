@@ -1,8 +1,9 @@
 services:
   meignx:
     build:
-      args:
-        CMAKE_PRESET: debug
+      context: meignx
+      dockerfile: .docker/Dockerfile
+      target: development
     develop:
       watch:
         - action: sync+exec

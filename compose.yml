@@ -1,9 +1,6 @@
 services:
   meignx:
-    build:
-      context: meignx
-      dockerfile: .docker/Dockerfile
-      target: production
+    image: luismeirelles/meignx:latest
     ports:
       - "8000:8000"
 
