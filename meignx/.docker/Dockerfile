@@ -14,19 +14,21 @@ FROM base AS development
 
 RUN cmake --preset debug \
     && cmake --build --preset debug \
+    && cmake --install build/debug --prefix /usr/local \
     && ln -sfn /app/build/debug/meignx /usr/local/bin/meignx
 
-ENTRYPOINT ["build/debug/meignx"]
+ENTRYPOINT ["meignx"]
 
 
 FROM base AS builder
 
 RUN cmake --preset release \
+    && cmake --install build/release --prefix /usr/local \
     && cmake --build --preset release
 
 
 FROM alpine AS production
 
-COPY --from=builder /app/build/release/meignx /usr/local/bin/meignx
+COPY --from=builder /usr/local/bin/meignx /usr/local/bin/meignx
 
 ENTRYPOINT ["meignx"]

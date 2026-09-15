@@ -19,3 +19,8 @@ add_executable(meignx
 target_include_directories(meignx PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+install(
+        TARGETS meignx
+        RUNTIME DESTINATION bin
+)
