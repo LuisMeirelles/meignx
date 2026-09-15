@@ -22,8 +22,8 @@ ENTRYPOINT ["meignx"]
 FROM base AS builder
 
 RUN cmake --preset release \
-    && cmake --install build/release --prefix /usr/local \
-    && cmake --build --preset release
+    && cmake --build --preset release \
+    && cmake --install build/release --prefix /usr/local
 
 
 FROM alpine AS production
