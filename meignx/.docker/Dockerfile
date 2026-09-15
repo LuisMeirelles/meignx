@@ -14,7 +14,6 @@ FROM base AS development
 
 RUN cmake --preset debug \
     && cmake --build --preset debug \
-    && cmake --install build/debug --prefix /usr/local \
     && ln -sfn /app/build/debug/meignx /usr/local/bin/meignx
 
 ENTRYPOINT ["meignx"]
