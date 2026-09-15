@@ -1,0 +1,40 @@
+services:
+  meignx:
+    build:
+      args:
+        CMAKE_PRESET: debug
+    develop:
+      watch:
+        - action: sync+exec
+          path: meignx/CMakeLists.txt
+          target: /app/CMakeLists.txt
+          exec:
+            working_dir: /app
+            command: >
+              sh -c "cmake --preset debug && cmake --build --preset debug"
+
+        - action: sync+exec
+          path: meignx/CMakePresets.json
+          target: /app/CMakePresets.json
+          exec:
+            working_dir: /app
+            command: >
+              sh -c "cmake --preset debug && cmake --build --preset debug"
+
+        - action: sync+exec
+          path: ./src
+          target: /app/src
+          include:
+            - "**/*.c"
+          exec:
+            working_dir: /app
+            command: cmake --build --preset debug
+
+        - action: sync+exec
+          path: ./include
+          target: /app/include
+          include:
+            - "**/*.h"
+          exec:
+            working_dir: /app
+            command: cmake --build --preset debug

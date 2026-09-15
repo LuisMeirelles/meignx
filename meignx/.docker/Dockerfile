@@ -1,15 +1,32 @@
-FROM alpine
-
-RUN apk add build-base cmake
+FROM alpine AS base
 
 WORKDIR /app
 
-COPY ./src/ ./src/
-COPY ./include/ ./include/
-COPY ./CMakeLists.txt ./CMakeLists.txt
+COPY src/ ./src/
+COPY include/ ./include/
+COPY CMakeLists.txt ./CMakeLists.txt
+COPY CMakePresets.json ./CMakePresets.json
 
-RUN cmake -S . -B cmake-build-debug \
-    && cmake --build cmake-build-debug
+RUN apk add --no-cache build-base cmake
 
-ENTRYPOINT ["cmake-build-debug/meignx"]
 
+FROM base AS development
+
+RUN cmake --preset debug \
+    && cmake --build --preset debug \
+    && ln -sfn /app/build/debug/meignx /usr/local/bin/meignx
+
+ENTRYPOINT ["build/debug/meignx"]
+
+
+FROM base AS builder
+
+RUN cmake --preset release \
+    && cmake --build --preset release
+
+
+FROM alpine AS production
+
+COPY --from=builder /app/build/release/meignx /usr/local/bin/meignx
+
+ENTRYPOINT ["meignx"]
