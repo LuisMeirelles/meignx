@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -111,15 +112,48 @@ static void handle_response(const int fd)
     printf("recv returned: %zd\n", recvd);
 }
 
-int main()
+static unsigned int parse_ip_address(char *ip_address)
 {
+    int i;
+    char *str;
+
+    unsigned int ip = 0;
+
+    // from 3 byte shift left to 0, concatenating the address
+    for (i = 3, str = ip_address; i >= 0; --i, str = nullptr)
+    {
+        const uint8_t octet = strtol(strtok(str, "."), nullptr, 10);
+
+        ip |= octet << (i * 8);
+    }
+
+    return htonl(ip);
+}
+
+static uint16_t parse_port(const char *port)
+{
+    return htons(strtol(port, nullptr, 10));
+}
+
+int main(const int argc, char *argv[])
+{
+    if (argc < 3)
+    {
+        fprintf(stderr, "usage: %s <fcgi-host> <fcgi-port>", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    const unsigned int ip = parse_ip_address(argv[1]);
+
+    const uint16_t port = parse_port(argv[2]);
+
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
-        .sin_port = htons(9000),
+        .sin_port = port,
         .sin_addr = {
-            .s_addr = 0x220A8C0,
+            .s_addr = ip,
         },
     };
 
