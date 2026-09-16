@@ -98,7 +98,7 @@ static void handle_request(const int fd)
     send_stdin(fd);
 }
 
-static void handle_response(const int fd)
+static int handle_response(const int fd)
 {
     char buf[4096] = {0};
 
@@ -107,15 +107,18 @@ static void handle_response(const int fd)
     if (recvd == -1)
     {
         perror("recv");
+        return -1;
     }
 
     printf("recv returned: %zd\n", recvd);
+
+    return 0;
 }
 
-static unsigned int parse_ip_address(char *ip_address)
+static unsigned int parse_ip_address(char* ip_address)
 {
     int i;
-    char *str;
+    char* str;
 
     unsigned int ip = 0;
 
@@ -130,24 +133,20 @@ static unsigned int parse_ip_address(char *ip_address)
     return htonl(ip);
 }
 
-static uint16_t parse_port(const char *port)
+static uint16_t parse_port(const char* port)
 {
     return htons(strtol(port, nullptr, 10));
 }
 
-int main(const int argc, char *argv[])
+static int connect_fcgi(const unsigned int ip, const uint16_t port)
 {
-    if (argc < 3)
-    {
-        fprintf(stderr, "usage: %s <fcgi-host> <fcgi-port>", argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    const unsigned int ip = parse_ip_address(argv[1]);
-
-    const uint16_t port = parse_port(argv[2]);
-
     const int fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (fd == -1)
+    {
+        perror("socket");
+        return -1;
+    }
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
@@ -159,9 +158,31 @@ int main(const int argc, char *argv[])
 
     const int error_connect = connect(fd, (struct sockaddr*)&addr, sizeof(addr));
 
-    if (error_connect != 0)
+    if (error_connect == -1)
     {
         perror("connect");
+        return -1;
+    }
+
+    return fd;
+}
+
+int main(const int argc, char* argv[])
+{
+    if (argc < 3)
+    {
+        fprintf(stderr, "usage: %s <fcgi-host> <fcgi-port>", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    const unsigned int ip = parse_ip_address(argv[1]);
+
+    const uint16_t port = parse_port(argv[2]);
+
+    const int fd = connect_fcgi(ip, port);
+
+    if (fd == -1)
+    {
         return errno;
     }
 
