@@ -13,14 +13,9 @@
 #include "fcgi.h"
 #include "send_header.h"
 #include "lib/send_all.h"
+#include "lib/params.h"
 
 #define BODY_BUF_SIZE 148
-
-typedef struct
-{
-    char* key;
-    char* value;
-} Param;
 
 static SendParamsResult make_protocol_error(const AddParamResult error)
 {

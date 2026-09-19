@@ -7,8 +7,10 @@
 #include <netinet/in.h>
 
 #include "begin_request.h"
+#include "fcgi.h"
 #include "send_params.h"
 #include "send_stdin.h"
+#include "../include/process_stdout.h"
 
 static void handle_send_params_result(const SendParamsResult send_params_result)
 {
@@ -100,17 +102,60 @@ static void handle_request(const int fd)
 
 static int handle_response(const int fd)
 {
+    FCGI_Header header = {0};
+
     char buf[4096] = {0};
 
-    const ssize_t recvd = recv(fd, buf, sizeof(buf), 0);
+    ssize_t recvd;
 
-    if (recvd == -1)
+    StdoutReponse out = {0};
+
+    while ((recvd = recv(fd, buf, sizeof(buf), 0)) > 0)
     {
-        perror("recv");
-        return -1;
-    }
+        if (recvd == -1)
+        {
+            perror("recv");
+            return -1;
+        }
 
-    printf("recv returned: %zd\n", recvd);
+        printf("recv returned: %zd\n", recvd);
+
+        size_t param_offset = 0;
+
+        do
+        {
+            header = (FCGI_Header){
+                .version = (uint8_t)buf[param_offset + 0],
+                .type = (uint8_t)buf[param_offset + 1],
+                .requestIdB1 = (uint8_t)buf[param_offset + 2],
+                .requestIdB0 = (uint8_t)buf[param_offset + 3],
+                .contentLengthB1 = (uint8_t)buf[param_offset + 4],
+                .contentLengthB0 = (uint8_t)buf[param_offset + 5],
+                .paddingLength = (uint8_t)buf[param_offset + 6],
+                .reserved = (uint8_t)buf[param_offset + 7],
+            };
+
+            param_offset += sizeof(header)
+                + (
+                    (header.contentLengthB1 << 8)
+                    | (header.contentLengthB0 & 0xFF)
+                )
+                + header.paddingLength;
+
+            if (header.type == FCGI_STDOUT)
+            {
+                char* start = buf;
+                char* body = start + sizeof(header);
+
+                process_stdout(body, &out);
+            }
+
+            // skip padding (from header)
+
+            // repeat
+        }
+        while (header.type != FCGI_END_REQUEST);
+    }
 
     return 0;
 }
