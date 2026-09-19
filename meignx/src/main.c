@@ -10,7 +10,7 @@
 #include "fcgi.h"
 #include "send_params.h"
 #include "send_stdin.h"
-#include "../include/process_stdout.h"
+#include "process_stdout.h"
 
 static void handle_send_params_result(const SendParamsResult send_params_result)
 {

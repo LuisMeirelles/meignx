@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "fcgi.h"
 #include "lib/params.h"
 
 typedef struct

@@ -2,7 +2,7 @@
 // Created by meirelles on 9/16/26.
 //
 
-#include "../../include/process_stdout.h"
+#include "process_stdout.h"
 
 #include <stdlib.h>
 #include <string.h>
