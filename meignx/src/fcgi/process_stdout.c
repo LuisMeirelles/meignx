@@ -5,51 +5,38 @@
 #include "process_stdout.h"
 
 #include <stdlib.h>
-#include <string.h>
+
+#include "lib/string.h"
 
 int process_stdout(char* content, StdoutReponse* stdout_buf)
 {
     int i = 0;
     char* http_headers = content;
-    char* headers[64] = {nullptr};
-    size_t headers_count = 0;
 
-    char* end_headers = strstr(http_headers, "\r\n\r\n");
+    // TODO: dynamic header size
+    char* headers[3] = {nullptr};
 
-    *end_headers = '\0';
+    char* parts[2] = {0};
 
-    stdout_buf->body = end_headers + 4;
+    explode(http_headers, "\r\n\r\n", parts);
 
-    while (1)
-    {
-        char* tok = strtok(http_headers, "\r\n");
+    http_headers = parts[0];
+    stdout_buf->body = parts[1];
 
-        if (tok == nullptr)
-        {
-            break;
-        }
+    explode(http_headers, "\r\n", headers);
 
-        headers[headers_count] = tok;
-
-        http_headers = nullptr;
-        headers_count++;
-    }
+    constexpr size_t headers_count = sizeof(headers) / sizeof(headers[0]);
 
     for (i = 0; i < headers_count; i++)
     {
-        char* delim = strchr(headers[i], ':');
+        explode(headers[i], ":", parts);
 
-        if (delim != nullptr)
-        {
-            *delim = '\0';
+        char* value = parts[1];
 
-            char* value = delim + 1;
+        while (*value == ' ') value++;
 
-            while (*value == ' ') value++;
-
-            stdout_buf->headers[i].key = headers[i];
-            stdout_buf->headers[i].value = value;
-        }
+        stdout_buf->headers[i].key = parts[0];
+        stdout_buf->headers[i].value = value;
     }
 
     return 0;

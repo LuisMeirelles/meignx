@@ -15,6 +15,7 @@ add_executable(meignx
         src/use_cases/send_stdin.c
         src/fcgi/send_header.c
         src/fcgi/process_stdout.c
+        src/lib/string.c
 )
 
 target_include_directories(meignx PRIVATE
