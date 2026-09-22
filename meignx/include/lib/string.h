@@ -4,4 +4,4 @@
 
 #pragma once
 
-void explode(char* haystack, const char* needle, char* parts[]);
+char** explode(char* haystack, const char* needle);

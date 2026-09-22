@@ -16,20 +16,20 @@ int process_stdout(char* content, StdoutReponse* stdout_buf)
     // TODO: dynamic header size
     char* headers[3] = {nullptr};
 
-    char* parts[2] = {0};
+    char** parts = {nullptr};
 
-    explode(http_headers, "\r\n\r\n", parts);
+    explode(http_headers, "\r\n\r\n");
 
     http_headers = parts[0];
     stdout_buf->body = parts[1];
 
-    explode(http_headers, "\r\n", headers);
+    explode(http_headers, "\r\n");
 
     constexpr size_t headers_count = sizeof(headers) / sizeof(headers[0]);
 
-    for (i = 0; i < headers_count; i++)
+    while (headers[i] != nullptr)
     {
-        explode(headers[i], ":", parts);
+        explode(headers[i], ":");
 
         char* value = parts[1];
 
@@ -37,6 +37,8 @@ int process_stdout(char* content, StdoutReponse* stdout_buf)
 
         stdout_buf->headers[i].key = parts[0];
         stdout_buf->headers[i].value = value;
+
+        i++;
     }
 
     return 0;

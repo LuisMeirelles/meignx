@@ -4,13 +4,26 @@
 
 #include "lib/string.h"
 
+#include <stdlib.h>
 #include <string.h>
 
-void explode(char* haystack, const char* needle, char* parts[])
+char** explode(char* haystack, const char* needle)
 {
     int i = 0;
     char* limit = {nullptr};
     const size_t needle_len = strlen(needle);
+
+    int count = 1;
+
+    const char* p = haystack;
+
+    while ((p = strstr(p, needle)) != nullptr)
+    {
+        count++;
+        p += needle_len;
+    }
+
+    char** parts = malloc(count * sizeof(char*));
 
     do
     {
@@ -29,6 +42,7 @@ void explode(char* haystack, const char* needle, char* parts[])
         else
         {
             parts[i] = haystack;
+            parts[i + 1] = nullptr;
         }
     }
     while (limit != nullptr);
